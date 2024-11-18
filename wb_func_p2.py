@@ -5,7 +5,7 @@ import csv
 import re
 from time import sleep
 import datetime
-from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException, ElementNotInteractableException, ElementClickInterceptedException
+from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException, ElementNotInteractableException, ElementClickInterceptedException, WebDriverException
 import os
 import json
 
@@ -44,45 +44,45 @@ def get_sub_cat_urls(save=True):
     driver.implicitly_wait(9)
     sleep(0.5033)
     driver.find_element(By.XPATH, '/html/body/div[1]/header/div/div[2]/div[1]/button').click() # кнопка меню
-    subs = driver.find_elements(By.XPATH, '/html/body/div[1]/div[3]/div[2]/ul/li')[6:11]
-    driver.implicitly_wait(10)
-    sleep(0.5033)
+    subs = driver.find_elements(By.XPATH, '/html/body/div[1]/div[3]/div[2]/ul/li')[4:]
+    subs.pop(-16)
+    #subs.pop(16)
+    subs.pop(-3)
+    driver.implicitly_wait(7)
 
-    for n, cat in enumerate(subs):
-        driver.implicitly_wait(90)
-        sleep(1.75)
-        cat.click() #ActionChains(driver).move_to_element(cat).click().perform()
+    for cat in subs:
+        driver.implicitly_wait(5)
+        sleep(0.77)
+        #ActionChains(driver).move_to_element(cat).click().perform() # cat.click()
+        ActionChains(driver).move_to_element(cat).perform()
         sub_urls = cat.find_elements(By.XPATH, '//div/ul/li/a')
-        sleep(0.75)
-        for el in sub_urls:
-            cat_urls[el.get_attribute('href').split('/')[-1]] = el.get_attribute('href')
-        driver.implicitly_wait(10)
+        sleep(0.7)
+        try:
+            for el in sub_urls:
+                cat_urls[str(el.get_attribute('href').split('/')[-1]) + "__" + str(el.get_attribute('href').split('/')[-2])] = el.get_attribute('href')
+
+            driver.implicitly_wait(5)
+        except (StaleElementReferenceException, IndexError):
+            pass
 
         sub_subs = cat.find_elements(By.XPATH, r'/html/body/div[1]/div[3]/div[3]/div/div/div/div[1]/ul/li/span')
         sub_subs = [el for el in sub_subs if len(el.text)>2]
         #print([el.text for el in sub_subs if len(el.text)>2])
-        sleep(0.75)
-        #print(len(sub_subs), '1', [el.text for el in sub_subs])
         for i in range(len(sub_subs)):
-            sleep(1.75)
             sub_subs_2 = driver.find_elements(By.XPATH, '/html/body/div[1]/div[3]/div[3]/div/div/div/div[1]/ul/li/span')
             sub_subs_2 = [el for el in sub_subs_2 if len(el.text)>2]
-            print(len(sub_subs_2), '2',  sub_subs_2[i].text)
-            sleep(0.75)
-            driver.implicitly_wait(10)
+            driver.implicitly_wait(5)
             try:
                 sub_subs_2[i].click() #ActionChains(driver).move_to_element(sub_subs_2[i]).click().perform()
                 backs = driver.find_elements(By.XPATH,' //div[1]/div[3]/div[3]/div/div/div/div[2]/div/button')
                 back = [el for el in backs if len(el.text)>2]
-                print([el.text for el in back])
                 sub_subs_3 = driver.find_elements(By.XPATH, '/html/body/div[1]/div[3]/div[3]/div/div[17]/div/div[2]/ul/li/a')
                 for el in sub_subs_3:
-                    cat_urls[el.get_attribute('href').split('/')[-1]] = el.get_attribute('href')
-
+                    cat_urls[str(el.get_attribute('href').split('/')[-1]) +"__"+ str(el.get_attribute('href').split('/')[-2])] = el.get_attribute('href')
 
                 back[0].click()
-                sleep(0.75)
-            except (ElementNotInteractableException, ElementClickInterceptedException):
+                #sleep(0.75)
+            except (ElementNotInteractableException, ElementClickInterceptedException, StaleElementReferenceException, IndexError):
                 pass
 
     if save == True:
@@ -90,46 +90,56 @@ def get_sub_cat_urls(save=True):
     driver.close()
     return cat_urls
 
+def numbers(string):
+    string = ''.join(el for el in string if el.isdigit())
+    return string
+
 
 def cat_collector(categorials_url: dict, save=True):
     cat_dump = []
+    cat_dump_urls = []
     """По собраным суб категориям определяет размер ниши и записывает так же первые товары из поиска """
     for k, v in categorials_url.items():
         cat_info = []
+        cat_urls = []
         driver = webdriver.Firefox()
         driver.get("about:preferences")
         driver.execute_script("arguments[0].click();", driver.find_element(By.XPATH, "//*[@id='defaultZoom']"))
         ActionChains(driver).click(driver.find_element(By.XPATH, "//*[@value='50']")).perform()
-        driver.implicitly_wait(5)
-        driver.get(v)
+        driver.implicitly_wait(9)
         try:
-            driver.implicitly_wait(9)
-            sleep(2.1)
-            number_of_products = driver.find_elements(By.XPATH, "//div/div[1]/div/span/span[1]")
-            urls_art = [el.get_attribute('href') for el in driver.find_elements(By.XPATH, "//div/article/div/a")]
-            art_rate = [el.text for el in driver.find_elements(By.XPATH, "//article/div/div/p[1]/span[2]")]
-            print(urls_art, art_rate)
-            cat_info.append(v)
-            cat_info.append(k)
-            cat_info.append(number_of_products)
-            for el in urls_art:
-                cat_info.append(el)
-            for el in art_rate:
-                cat_info.append(el)
-            cat_dump.append(cat_info)
-        except NoSuchElementException:
-            pass
+            driver.get(v)
+            try:
+                driver.implicitly_wait(9)
+                sleep(5.1)
+                number_of_products = driver.find_elements(By.XPATH, "//div/div[1]/div/span/span[1]")
+                number_of_products = [el.text for el in number_of_products if len(el.text)>2]
+                number_of_products = [numbers(el)for el in number_of_products]
+                urls_art = [el.get_attribute('href') for el in driver.find_elements(By.XPATH, "//div/article/div/a")]
+                art_rate = [el.text for el in driver.find_elements(By.XPATH, "//article/div/div/p[1]/span[2]")]
+                art_rate = [numbers(el) for el in art_rate]
+                #print(art_rate, number_of_products)
+                cat_info.append(v)
+                cat_info.append(k)
+                cat_info.append(number_of_products)
+                for el in urls_art:
+                    cat_urls.append(el)
+                for el in art_rate:
+                    cat_info.append(el)
+                cat_dump.append(cat_info)
+                cat_dump_urls.append(cat_urls)
+            except NoSuchElementException:
+                pass
+        except (WebDriverException, NoSuchElementException)
         driver.close()
     if save == True:
         save_to(cat_dump, name="cat_dump", type="csv", rows=True)
+        save_to(cat_dump_urls, name="cat_dump_urls", type="csv", rows=True)
     return cat_dump
 
-#a = {'foot':'https://www.wildberries.ru/catalog/0/search.aspx?search=yjcrb', 'too':"https://www.wildberries.ru/catalog/0/search.aspx?search=yjcrb"}
-
+#a = { "podguzniki-detskie": "https://www.wildberries.ru/catalog/detyam/tovary-dlya-malysha/podguzniki/podguzniki-detskie", "bryuki-i-shorty": "https://www.wildberries.ru/catalog/muzhchinam/odezhda/bryuki-i-shorty", "verhnyaya-odezhda": "https://www.wildberries.ru/catalog/muzhchinam/odezhda/verhnyaya-odezhda"}
 #c = cat_collector(a)
-get_sub_cat_urls(save=True)
-
-
+#A = get_sub_cat_urls()
 
 
 
