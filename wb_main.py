@@ -1,5 +1,3 @@
-
-
 from wb_func_p2 import get_sub_cat_urls, cat_collector
 
 if __name__=="__main__":
@@ -14,9 +12,3 @@ if __name__=="__main__":
         sub_cat_dict.pop(key, None)
     cat_collector(sub_cat_dict)
 
-
-
-
-    #sun_cat_dict = get_sub_cat_urls()
-    #A = {"": "https://digital.wildberries.ru/", "trudoustroystvo": "https://www.wildberries.ru/services/trudoustroystvo", "chernaya-pyatnitsa": "https://www.wildberries.ru/promotions/chernaya-pyatnitsa"}
-    #cat_collector(A)
